@@ -7,7 +7,7 @@ import copy
 def main():
 
     x = ROOT.Double()
-    
+    #path1 = "turnons_data17_withEmulation_02_26.root"
     path1 = "turnons.root"
     TFile1 = ROOT.TFile(path1)
 
@@ -18,27 +18,31 @@ def main():
     listHists = []
 
     for h in TFile1.GetListOfKeys():
+        print(h)
         #here you can avoid this clause or have a loop on an array of names
         #if "HLT_j260-HLT_j110" in h.GetName() :
             #listHists.append(TFile1.Get(h.GetName()))
             #continue
+        print(h.GetName())
+        print(TFile1.Get(h.GetName()))
+        #print(TFile1.Get("effHists_jetTriggerEfficiencies_smallR/HLT_j400-HLT_j260_pt[0]TDT_turnon_TDT_effHists_jetTriggerEfficiencies_smallR/HLT_j400-HLT_j260_0_TDT"))
         listHists.append(TFile1.Get(h.GetName()))
     print(listHists)
 
     for hist in listHists:
-        
         #histName = re.search('effHists_jetTriggerEfficiencies_smallR/(.*)_pt[0]_numTDT*', hist.GetName())
         #listHistNames.append(histName)
         histName = hist.GetName().rsplit('/', 1)[-1]
         #listHistNames.append(histName)
+        #if "Emulated" in histName:
         efficiencyPoints = findEfficiencyPoints(hist, efficiencies)
         print(efficiencyPoints)
         efficiencyPointDict[histName] = efficiencyPoints
 
-    with open("efficiencyPointsDict.json", 'wb') as outfile:
+    with open("efficiencyPointsDict_03_04.json", 'wb') as outfile:
         json.dump(efficiencyPointDict, outfile, indent=4)
 
-    with open("efficiencyPointDict.py", "w") as filePy:
+    with open("efficiencyPointDict_03_04.py", "w") as filePy:
         filePy.write(str(efficiencyPointDict))
     #listHists[0].Print("v")
         
