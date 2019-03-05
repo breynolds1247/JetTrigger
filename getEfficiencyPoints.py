@@ -7,43 +7,60 @@ import copy
 def main():
 
     x = ROOT.Double()
-    #path1 = "turnons_data17_withEmulation_02_26.root"
-    path1 = "turnons.root"
+    path1 = "turnons_data17_withEmulation_02_26.root"
+    #path1 = "turnons.root"
     TFile1 = ROOT.TFile(path1)
 
     efficiencies = [0.95, 0.99, 0.995]
     
     efficiencyPointDict = {}
+    efficiencyPointDictEmulated = {}
+    efficiencyPointDictTDT = {}
     listHistNames = []
     listHists = []
 
     for h in TFile1.GetListOfKeys():
-        print(h)
+        ##print(h)
         #here you can avoid this clause or have a loop on an array of names
         #if "HLT_j260-HLT_j110" in h.GetName() :
             #listHists.append(TFile1.Get(h.GetName()))
             #continue
-        print(h.GetName())
-        print(TFile1.Get(h.GetName()))
+        ##print(h.GetName())
+        ##print(TFile1.Get(h.GetName()))
+        print(h.ReadObj())
         #print(TFile1.Get("effHists_jetTriggerEfficiencies_smallR/HLT_j400-HLT_j260_pt[0]TDT_turnon_TDT_effHists_jetTriggerEfficiencies_smallR/HLT_j400-HLT_j260_0_TDT"))
-        listHists.append(TFile1.Get(h.GetName()))
+        ##listHists.append(TFile1.Get(h.GetName()))
+        listHists.append(h.ReadObj())
     print(listHists)
 
     for hist in listHists:
+        if type(hist) != ROOT.TGraphAsymmErrors:
+            continue
         #histName = re.search('effHists_jetTriggerEfficiencies_smallR/(.*)_pt[0]_numTDT*', hist.GetName())
         #listHistNames.append(histName)
         histName = hist.GetName().rsplit('/', 1)[-1]
         #listHistNames.append(histName)
-        #if "Emulated" in histName:
         efficiencyPoints = findEfficiencyPoints(hist, efficiencies)
+        if "Emulated" in hist.GetName():
+            histNameLabel = histName + "_Emulated"
+            efficiencyPointDictEmulated[histNameLabel] = efficiencyPoints
+            #print "'Emulated' found in: " + str(hist.GetName())
+        if "TDT" in hist.GetName():
+            histNameLabel = histName + "_TDT"
+            efficiencyPointDictTDT[histNameLabel] = efficiencyPoints
+            #print "'TDT' found in: " + str(hist.GetName())
         print(efficiencyPoints)
         efficiencyPointDict[histName] = efficiencyPoints
 
     with open("efficiencyPointsDict_03_04.json", 'wb') as outfile:
-        json.dump(efficiencyPointDict, outfile, indent=4)
+        #json.dump(efficiencyPointDict, outfile, indent=4)
+        json.dump(efficiencyPointDictEmulated, outfile, indent=4)
+        json.dump(efficiencyPointDictTDT, outfile, indent=4)
 
     with open("efficiencyPointDict_03_04.py", "w") as filePy:
-        filePy.write(str(efficiencyPointDict))
+        #filePy.write(str(efficiencyPointDict))
+        filePy.write(str(efficiencyPointDictEmulated))
+        filePy.write(str(efficiencyPointDictTDT))
     #listHists[0].Print("v")
         
 def findEfficiencyPoints(hist, efficiencyValues):
