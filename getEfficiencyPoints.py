@@ -11,6 +11,8 @@ def main():
     #path1 = "turnons.root"
     TFile1 = ROOT.TFile(path1)
 
+    outputFilename = "efficiencyPointsDict_03_04"
+
     efficiencies = [0.95, 0.99, 0.995]
     
     efficiencyPointDict = {}
@@ -52,12 +54,12 @@ def main():
         print(efficiencyPoints)
         efficiencyPointDict[histName] = efficiencyPoints
 
-    with open("efficiencyPointsDict_03_04.json", 'wb') as outfile:
+    with open(outputFilename+".json", 'wb') as outfile:
         #json.dump(efficiencyPointDict, outfile, indent=4)
         json.dump(efficiencyPointDictEmulated, outfile, indent=4)
         json.dump(efficiencyPointDictTDT, outfile, indent=4)
 
-    with open("efficiencyPointDict_03_04.py", "w") as filePy:
+    with open(outputFilename+".py", "w") as filePy:
         #filePy.write(str(efficiencyPointDict))
         filePy.write(str(efficiencyPointDictEmulated))
         filePy.write(str(efficiencyPointDictTDT))
