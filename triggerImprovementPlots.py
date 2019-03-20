@@ -12,42 +12,22 @@ from pprint import pprint
 
 def main():
 
+    ROOT.gROOT.SetStyle("ATLAS")
     ##Configurable variables
     ##manually re-name these for each new input .root files that you want to analyze
-    path1 = "/home/bryan/work/TLA/TriggerImprovementStudies/01_22_triggerImprovements_singleJet_gsc_mu/singleJet/hist-filelist.root"
+    #path1 = "/home/bryan/work/TLA/TriggerImprovementStudies/03_13_triggerImprovements_singleJet_gsc_mu/singleJet/hist-filelist.root"
+    path1 = "hist-filelist.root"
     efficiencyDictPath = "efficiencyPointsDict.json"
     plotTitle = "Jet pT(Lead) Single Jet Triggers"
     #outputPDF = "TriggerImprovements_2017_singleJet_allTriggers_10_10"
-    outputPDF = "TriggerImprovements_2017_singleJet_individualTriggers_01_28"
+    outputPDF = "TriggerImprovements_2017_singleJet_individualTriggers_03_13"
     ##Formatting- change these if needed
     setLogX = True
     setLogY = False
 
     ##Read in efficiency points from json
     ##When there are different probe collections for each reference collection, use the higher threshold reference collection
-    namesAndEffs = {}
-    with open(efficiencyDictPath) as f:
-        effDict = json.load(f)
-
-    for key1 in effDict.keys():
-        #print key1
-        #print(effDict[key1])
-        tempProbe1 = key1.split('-', 1)[0]
-        tempRef1 = key1.rsplit('-', 1)[1]
-        #print key1.split('-', 1)
-        #print "probe jet: ", tempProbe1
-        #print "ref jet: ", tempRef1
-        tempRefThreshold1 = tempRef1.split('j', 1)[-1].split('_L1', 1)[0]
-        #namesAndEffs[tempProbe1] = effDict[key1]
-        #print tempRefThreshold1
-        for key2 in effDict.keys():
-            tempProbe2 = key2.split('-', 1)[0]
-            tempRef2 = key2.rsplit('-', 1)[1]
-            tempRefThreshold2 = tempRef2.split('j', 1)[-1].split('_L1', 1)[0]
-            #print "threshold 1: ", float(tempRefThreshold1), " threshold 2: ", float(tempRefThreshold2)
-            if ((tempProbe2 == tempProbe1) and (float(tempRefThreshold2) > float(tempRefThreshold1))):
-                namesAndEffs[tempProbe1] = effDict[key2]
-        #print namesAndEffs
+    #namesAndEffs = makeNamesAndEffPointDict(efficiencyDictPath)
     
     TFile1 = ROOT.TFile(path1)
 
@@ -70,8 +50,13 @@ def main():
     for hists in histList:
         histNames.append(hists.GetName())
         legendLabels.append(hists.GetName().replace('h_PtLeadingReference_',''))
+
+    print "HISTNAMES: ", histNames
+    print "LEGENDLABELS: ", legendLabels
         
     ##Draw histograms and label legend entries as trigger names
+    ##Block for drawing all single trigger hists on same canvas
+    ##Will look like a complete mess with too many hists
     for i,hist in enumerate(histList):
         if getMax(hist) == 0:
             continue
@@ -100,50 +85,69 @@ def main():
     TriggerCanvas.Update()
     TriggerCanvas.Print(outputPDF + ".pdf","pdf")
 
-    print legendLabels
+    
+    #print legendLabels
 
-    count = 0
-    for i,hist in enumerate(histList):
+    #count = 0
+    #for i,hist in enumerate(histList):
         #if legendLabels[i] == 'allTriggers':
         #    continue
-        individualTriggerCanvas = ROOT.TCanvas("cIndividualTriggers","2017 Leading pT")
-        effHist = drawHistsWithEfficiencyPoints(hist, legendLabels[i], namesAndEffs, individualTriggerCanvas)
-        if effHist == None:
-            continue
-        if effHist != None:
-            count += 1
-        hist.Draw("hist")
-        effHist.Draw("hist same")
-        individualTriggerCanvas.Update()
-        if i == 1:
+    #    individualTriggerCanvas = ROOT.TCanvas("cIndividualTriggers","2017 Leading pT")
+    #    effHist = drawHistsWithEfficiencyPoints(hist, legendLabels[i], namesAndEffs, individualTriggerCanvas)
+    #    if effHist == None:
+    #        continue
+    #    if effHist != None:
+    #        count += 1
+    #    hist.Draw("hist")
+    #    effHist.Draw("hist same")
+    #    individualTriggerCanvas.Update()
+    #    if i == 1:
             #print "effHist main: ", effHist
             #hist.Draw("hist")
             #effHist.Draw("hist same")
             #individualTriggerCanvas.Update()
             #individualTriggerCanvas.Print(outputPDF + "_lineTest.pdf[","pdf")
-            individualTriggerCanvas.Print(outputPDF + "_turnonTest.pdf[","pdf")
-        else:
+    #        individualTriggerCanvas.Print(outputPDF + "_turnonTest.pdf[","pdf")
+    #    else:
             #drawHistsWithEfficiencyPoints(hist, legendLabels[i], namesAndEffs, individualTriggerCanvas)
             #hist.Draw("hist")
             #effHist.Draw("hist same")
             #individualTriggerCanvas.Update()
-            if i == (len(histList)-1):
-                print "closing pdf"
+    #        if i == (len(histList)-1):
+    #            print "closing pdf"
                 #individualTriggerCanvas.Print(outputPDF + "_lineTest.pdf]","pdf")
-                individualTriggerCanvas.Print(outputPDF + "_turnonTest.pdf]","pdf")
-            else:
+    #            individualTriggerCanvas.Print(outputPDF + "_turnonTest.pdf]","pdf")
+    #        else:
                 #individualTriggerCanvas.Print(outputPDF + "_lineTest.pdf","pdf")
-                individualTriggerCanvas.Print(outputPDF + "_turnonTest.pdf","pdf")
+    #            individualTriggerCanvas.Print(outputPDF + "_turnonTest.pdf","pdf")
     #individualTriggerCanvas.Print(outputPDF + "_lineTest.pdf]","pdf")
-    individualTriggerCanvas.Print(outputPDF + "_turnonTest.pdf]","pdf")
+    #individualTriggerCanvas.Print(outputPDF + "_turnonTest.pdf]","pdf")
 
-    allTriggerCanvas = ROOT.TCanvas("cAllTrigger","2007 Leading pT")
+    allTriggerCanvas = ROOT.TCanvas("cAllTrigger","2017 Leading pT")
     allTriggerHist = TFile1.Get("h_PtLeadingReference_allTriggers")
+    allTriggerHist_efficient = TFile1.Get("h_PtLeadingReference_allTriggers_efficientEntriesOnly")
     allTriggerHist.SetTitle(plotTitle + "(All Triggers)")
     allTriggerHist.GetXaxis().SetTitle("pT(Lead) [GeV]")
     allTriggerHist.GetYaxis().SetTitle("Number of Events")
     allTriggerHist.SetStats(False)
+    allTriggerHist.SetLineColor(ROOT.kBlack)
+    allTriggerHist.SetFillColor(ROOT.kWhite)
+    allTriggerHist_efficient.SetLineColor(ROOT.kBlack)
+    allTriggerHist_efficient.SetFillColor(ROOT.kBlack)
+    allTriggerHist_efficient.SetLineStyle(ROOT.kDashed)
+    allTriggerHist.SetFillStyle(3144)
+    allTriggerHist_efficient.SetFillStyle(3144)
     allTriggerHist.Draw("hist")
+    allTriggerHist_efficient.Draw("hist same")
+    efficiencyPercentage = calculateEffPercent(allTriggerHist, allTriggerHist_efficient)
+    effPercentLabel = ROOT.TLatex(0.65,0.35,"Efficient Entries Percentage = "+ str(round(efficiencyPercentage, 3))+"%")
+    effPercentLabel.SetNDC(ROOT.kTRUE)
+    effPercentLabel.SetTextSize(0.03)
+    effPercentLabel.Draw()
+    legend_allTrig = ROOT.TLegend(0.825224,0.435737,0.979478,0.917304)
+    legend_allTrig.AddEntry(allTriggerHist,"All","l")
+    legend_allTrig.AddEntry(allTriggerHist_efficient,"Efficient Only","l")
+    legend_allTrig.Draw()
     allTriggerCanvas.Update()
     allTriggerCanvas.Print(outputPDF + "_allTrigger.pdf","pdf")
     
@@ -161,7 +165,51 @@ def main():
     stackCanvas.Update()
     stackCanvas.Print(outputPDF + "_THStack.pdf","pdf")
 
-    print legendLabels
+    ##Match standard pT spectra to corresponding efficient pT spectra
+    ##Plot each pair individually, save to one pdf
+    singleTriggerCanvas = ROOT.TCanvas("cSingleTriggers","2017 Single Jet Leading pT")
+    singleTriggerCanvas.Print(outputPDF + "_efficientHistComparisons.pdf[","pdf")
+    for j,hist1 in enumerate(histList):
+        singleTriggerLegend = ROOT.TLegend(0.825224,0.435737,0.979478,0.917304)
+        if "Efficient" not in hist1.GetName():
+            triggerName = hist1.GetName().replace('h_PtLeadingReference_','')
+            for hist2 in histList:
+                #print "hist test:", hist1.GetName(), hist2.GetName()
+                if (triggerName in hist2.GetName()) and ("Efficient" in hist2.GetName()):
+                    print "Matching hists: ", hist1.GetName(), hist2.GetName()
+                    hist1.SetTitle(plotTitle)
+                    hist1.GetXaxis().SetTitle("p_{T, Lead} " + triggerName + " [GeV]")
+                    hist1.GetYaxis().SetTitle("Number of Recorded Entries")
+                    #hist2.SetLineStyle(2)
+                    #hist1.SetLineColor(ROOT.kRed)
+                    hist1.SetLineColor(ROOT.kBlack)
+                    hist2.SetLineColor(ROOT.kBlack)
+                    #hist1.SetFillColor(ROOT.kRed)
+                    hist1.SetFillColor(ROOT.kWhite)
+                    hist2.SetFillColor(ROOT.kBlack)
+                    hist2.SetLineStyle(ROOT.kDashed)
+                    hist1.SetFillStyle(3144)
+                    hist2.SetFillStyle(3144)
+                    hist1.SetStats(False)
+                    hist1.Draw("hist")
+                    hist2.Draw("hist same")
+                    efficiencyPercentage = calculateEffPercent(hist1, hist2)
+                    effPercentLabel = ROOT.TLatex(0.65,0.35,"Efficient Entries Percentage = "+ str(round(efficiencyPercentage, 3))+"%")
+                    effPercentLabel.SetNDC(ROOT.kTRUE)
+                    effPercentLabel.SetTextSize(0.03)
+                    effPercentLabel.Draw()
+                    singleTriggerLegend.AddEntry(hist1,"All Entries","l")
+                    singleTriggerLegend.AddEntry(hist2,"Efficient Entries","l")
+                    singleTriggerLegend.Draw()
+                    singleTriggerCanvas.Update()
+                    #if j == 0:
+                    #    singleTriggerCanvas.Print(outputPDF + "_efficientHistComparisons.pdf[","pdf")
+                    #else:
+                    singleTriggerCanvas.Print(outputPDF + "_efficientHistComparisons.pdf","pdf")
+    singleTriggerCanvas.Print(outputPDF + "_efficientHistComparisons.pdf]","pdf")
+
+
+    #print legendLabels
     #print histList
     #print histMaximums
         
@@ -248,7 +296,34 @@ def main():
 
 def getMax(histogram):
     return histogram.GetMaximum()
-    
+
+def makeNamesAndEffPointDict(effDictPath):
+    namesAndEffs = {}
+    with open(effDictPath) as f:
+        effDict = json.load(f)
+
+    for key1 in effDict.keys():
+        #print key1
+        #print(effDict[key1])
+        tempProbe1 = key1.split('-', 1)[0]
+        tempRef1 = key1.rsplit('-', 1)[1]
+        #print key1.split('-', 1)
+        #print "probe jet: ", tempProbe1
+        #print "ref jet: ", tempRef1
+        tempRefThreshold1 = tempRef1.split('j', 1)[-1].split('_L1', 1)[0]
+        #namesAndEffs[tempProbe1] = effDict[key1]
+        #print tempRefThreshold1
+        for key2 in effDict.keys():
+            tempProbe2 = key2.split('-', 1)[0]
+            tempRef2 = key2.rsplit('-', 1)[1]
+            tempRefThreshold2 = tempRef2.split('j', 1)[-1].split('_L1', 1)[0]
+            #print "threshold 1: ", float(tempRefThreshold1), " threshold 2: ", float(tempRefThreshold2)
+            if ((tempProbe2 == tempProbe1) and (float(tempRefThreshold2) > float(tempRefThreshold1))):
+                namesAndEffs[tempProbe1] = effDict[key2]
+        #print namesAndEffs
+        
+    return namesAndEffs
+
 def drawHistsWithEfficiencyPoints(hist, label, namesEffDict, canvas):
     if label not in namesEffDict.keys():
         print label, " does not exist in dictionaries"
@@ -290,6 +365,12 @@ def drawHistsWithEfficiencyPoints(hist, label, namesEffDict, canvas):
             return effHist995
             #return effHist99
             #return effHist95
-        
+
+def calculateEffPercent(stdHist, effHist):
+    numEventsStd = stdHist.Integral()
+    numEventsEff = effHist.Integral()
+    effFrac = numEventsEff/numEventsStd
+    effPercent = effFrac*100.0
+    return effPercent
     
 main()
