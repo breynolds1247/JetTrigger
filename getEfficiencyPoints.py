@@ -7,12 +7,15 @@ import copy
 def main():
 
     x = ROOT.Double()
+    #provide file path to root file containing turnon plots
     path1 = "turnons_data17_withEmulation_02_26.root"
     #path1 = "turnons.root"
     TFile1 = ROOT.TFile(path1)
 
+    #name of output dictionary files (no file extension)
     outputFilename = "efficiencyPointsDict_03_04"
 
+    #specify efficiency point values, add more or less to the list as needed
     efficiencies = [0.95, 0.99, 0.995]
     
     efficiencyPointDict = {}
@@ -22,26 +25,22 @@ def main():
     listHists = []
 
     for h in TFile1.GetListOfKeys():
-        ##print(h)
         #here you can avoid this clause or have a loop on an array of names
         #if "HLT_j260-HLT_j110" in h.GetName() :
             #listHists.append(TFile1.Get(h.GetName()))
             #continue
-        ##print(h.GetName())
-        ##print(TFile1.Get(h.GetName()))
-        print(h.ReadObj())
-        #print(TFile1.Get("effHists_jetTriggerEfficiencies_smallR/HLT_j400-HLT_j260_pt[0]TDT_turnon_TDT_effHists_jetTriggerEfficiencies_smallR/HLT_j400-HLT_j260_0_TDT"))
-        ##listHists.append(TFile1.Get(h.GetName()))
+        #print(h.ReadObj())
         listHists.append(h.ReadObj())
-    print(listHists)
+    #print(listHists)
 
+    print "writing efficiency point information to " + outputFilename + ".json and " + outputFilename + ".py..."
     for hist in listHists:
+        #jetTriggerEfficiencies should only produce TGraphAsymmErrors.  This script doesn't read TH1s
         if type(hist) != ROOT.TGraphAsymmErrors:
             continue
-        #histName = re.search('effHists_jetTriggerEfficiencies_smallR/(.*)_pt[0]_numTDT*', hist.GetName())
-        #listHistNames.append(histName)
+
+        #isolate name of trigger from hist name
         histName = hist.GetName().rsplit('/', 1)[-1]
-        #listHistNames.append(histName)
         efficiencyPoints = findEfficiencyPoints(hist, efficiencies)
         if "Emulated" in hist.GetName():
             histNameLabel = histName + "_Emulated"
@@ -51,7 +50,7 @@ def main():
             histNameLabel = histName + "_TDT"
             efficiencyPointDictTDT[histNameLabel] = efficiencyPoints
             #print "'TDT' found in: " + str(hist.GetName())
-        print(efficiencyPoints)
+        #print(efficiencyPoints)
         efficiencyPointDict[histName] = efficiencyPoints
 
     with open(outputFilename+".json", 'wb') as outfile:
@@ -64,7 +63,8 @@ def main():
         filePy.write(str(efficiencyPointDictEmulated))
         filePy.write(str(efficiencyPointDictTDT))
     #listHists[0].Print("v")
-        
+
+#function to find efficiency points for each turnon, specified efficiency value     
 def findEfficiencyPoints(hist, efficiencyValues):
     x = ROOT.Double(0.0)
     y = ROOT.Double(0.0)
@@ -73,7 +73,7 @@ def findEfficiencyPoints(hist, efficiencyValues):
     minX = 0.0 #in case you want to force a minimum pT for efficiency
     effPoints = {}
     for value in efficiencyValues:
-        print "checking turnon for", value
+        ##print "checking turnon for", value
         tempEffPoint = 0.0
         effCut = value
         efficientXValues = []
@@ -90,9 +90,9 @@ def findEfficiencyPoints(hist, efficiencyValues):
                #print "xPrev: ", xPrev, " yPrev: ", yPrev
                if yPrev < effCut and x > 0:
                    tempEffPoint = copy.copy(x)
-                   print "tempEffPoint reset to: ", tempEffPoint
+                   ##print "tempEffPoint reset to: ", tempEffPoint
            if i == (len(range(hist.GetN()))-1):
-               print "final tempEffPoint: ", tempEffPoint
+               ##print "final tempEffPoint: ", tempEffPoint
                effPoints[value] = tempEffPoint
 
     return effPoints
