@@ -4,7 +4,7 @@ import re
 import math
 import json
 from ROOT import TLorentzVector
-from pprint import pprint
+import pprint
 
 #Formatting purposes
 #import morisotColorsAndMarkers as colorsAndMarkers
@@ -13,17 +13,21 @@ from pprint import pprint
 def main():
 
     ROOT.gROOT.SetStyle("ATLAS")
+    ROOT.gStyle.SetLegendBorderSize(0)
     ##Configurable variables
     ##manually re-name these for each new input .root files that you want to analyze
     #path1 = "/home/bryan/work/TLA/TriggerImprovementStudies/03_13_triggerImprovements_singleJet_gsc_mu/singleJet/hist-filelist.root"
-    path1 = "hist-filelist.root"
+    #path1 = "hist-filelist.root"
+    path1 = "rawPtSpectraFiles/2016/test2016.root"
     efficiencyDictPath = "efficiencyPointsDict.json"
     plotTitle = "Jet pT(Lead) Single Jet Triggers"
     #outputPDF = "TriggerImprovements_2017_singleJet_allTriggers_10_10"
-    outputPDF = "TriggerImprovements_2017_singleJet_individualTriggers_03_13"
+    outputPDF = "TriggerImprovements_triggerPaperTest_logX_2016"
     ##Formatting- change these if needed
     setLogX = True
     setLogY = False
+    rebin = True
+    rebinValue = 2
 
     ##Read in efficiency points from json
     ##When there are different probe collections for each reference collection, use the higher threshold reference collection
@@ -34,6 +38,7 @@ def main():
     histList = []
     histNames = []
     legendLabels = []
+    effPercentDict = {}
     #goodColors = [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 28, 30, 35, 38, 39, 41, 42, 46, 49] #20 distinctive colors.  If more than 20 plots things need to be re-though, including putting 20 plots on one canvas...
     goodColors = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27,  28, 29, 30, 35, 38, 39, 41, 42, 46, 49]
     stack = ROOT.THStack("hStack", plotTitle) 
@@ -57,9 +62,22 @@ def main():
     ##Draw histograms and label legend entries as trigger names
     ##Block for drawing all single trigger hists on same canvas
     ##Will look like a complete mess with too many hists
-    for i,hist in enumerate(histList):
-        if getMax(hist) == 0:
+    for i,hist1 in enumerate(histList):
+        if getMax(hist1) == 0:
             continue
+        if rebin:
+            hist1.Rebin(rebinValue)
+        if "Efficient" not in hist1.GetName():
+            triggerName = hist1.GetName().replace('h_PtLeadingReference_','')
+            for j,hist2 in enumerate(histList):
+                #print "hist test:", hist1.GetName(), hist2.GetName()
+                if (triggerName in hist2.GetName()) and ("Efficient" in hist2.GetName()):
+                    ##NOTE:
+                    ##hist1 = all events
+                    ##hist2 = efficient only
+                    print "Matching hists: ", hist1.GetName(), hist2.GetName()
+                    hist1.SetLineColor(goodColors[i])
+                    hist2.SetLineColor(goodColors[i])
         if i == 0:
             TriggerCanvas = ROOT.TCanvas("cTriggers","2017 Leading pT")
             if setLogX is True:
@@ -67,68 +85,54 @@ def main():
             if setLogY is True:
                 TriggerCanvas.SetLogy()
             legend = ROOT.TLegend(0.825224,0.435737,0.979478,0.917304)
-            legend.AddEntry(hist,legendLabels[i],"l")
-            hist.SetTitle(plotTitle)
-            hist.GetXaxis().SetTitle("p_{T, Lead} [GeV]")
-            hist.GetYaxis().SetTitle("Number of Recorded Entries")
-            hist.SetLineColor(goodColors[i])
-            hist.SetStats(False)
-            hist.Draw("hist")
+            legend.AddEntry(hist1,legendLabels[i],"l")
+            hist1.SetTitle(plotTitle)
+            hist1.GetXaxis().SetTitle("p_{T, Lead} [GeV]")
+            hist1.GetYaxis().SetTitle("Events Recorded")
+            singleTriggerLegend = ROOT.TLegend(0.71,0.67,0.9,0.77)
+            #hist.SetLineColor(goodColors[i])
+            hist1.SetStats(False)
+            #hist2.Draw(False)
+            hist1.Draw("hist")
+            #hist2.Draw("hist")
             #stack.Add(hist)
         else:
-            hist.Draw("hist same")
-            hist.SetLineColor(goodColors[i])
-            legend.AddEntry(hist,legendLabels[i],"l")
+            hist1.Draw("hist same")
+            #hist1.SetLineColor(goodColors[i])
+            legend.AddEntry(hist1,legendLabels[i],"l")
             #stack.Add(hist)
             
     legend.Draw()
     TriggerCanvas.Update()
     TriggerCanvas.Print(outputPDF + ".pdf","pdf")
 
-    
-    #print legendLabels
+    ##Stacked histogram
+    histList.sort(reverse=False, key=getMax)
+    for i,hist in enumerate(histList):
+        if "allTriggers" not in hist.GetName():
+            hist.SetFillColor(hist.GetLineColor())
+            stack.Add(hist)
+    stackCanvas = ROOT.TCanvas("cStack","2017 Leading pT")
+    stack.Draw("hist NOSTACK")
+    stack.GetXaxis().SetTitle("p_{T,Lead} [GeV]")
+    stack.GetYaxis().SetTitle("Number of Recorded Events")
+    #stack.Draw("hist")
+    legend.Draw()
+    stackCanvas.Update()
+    stackCanvas.Print(outputPDF + "_THStack.pdf","pdf")
 
-    #count = 0
-    #for i,hist in enumerate(histList):
-        #if legendLabels[i] == 'allTriggers':
-        #    continue
-    #    individualTriggerCanvas = ROOT.TCanvas("cIndividualTriggers","2017 Leading pT")
-    #    effHist = drawHistsWithEfficiencyPoints(hist, legendLabels[i], namesAndEffs, individualTriggerCanvas)
-    #    if effHist == None:
-    #        continue
-    #    if effHist != None:
-    #        count += 1
-    #    hist.Draw("hist")
-    #    effHist.Draw("hist same")
-    #    individualTriggerCanvas.Update()
-    #    if i == 1:
-            #print "effHist main: ", effHist
-            #hist.Draw("hist")
-            #effHist.Draw("hist same")
-            #individualTriggerCanvas.Update()
-            #individualTriggerCanvas.Print(outputPDF + "_lineTest.pdf[","pdf")
-    #        individualTriggerCanvas.Print(outputPDF + "_turnonTest.pdf[","pdf")
-    #    else:
-            #drawHistsWithEfficiencyPoints(hist, legendLabels[i], namesAndEffs, individualTriggerCanvas)
-            #hist.Draw("hist")
-            #effHist.Draw("hist same")
-            #individualTriggerCanvas.Update()
-    #        if i == (len(histList)-1):
-    #            print "closing pdf"
-                #individualTriggerCanvas.Print(outputPDF + "_lineTest.pdf]","pdf")
-    #            individualTriggerCanvas.Print(outputPDF + "_turnonTest.pdf]","pdf")
-    #        else:
-                #individualTriggerCanvas.Print(outputPDF + "_lineTest.pdf","pdf")
-    #            individualTriggerCanvas.Print(outputPDF + "_turnonTest.pdf","pdf")
-    #individualTriggerCanvas.Print(outputPDF + "_lineTest.pdf]","pdf")
-    #individualTriggerCanvas.Print(outputPDF + "_turnonTest.pdf]","pdf")
-
+    ##sawtooth all trigger plots
     allTriggerCanvas = ROOT.TCanvas("cAllTrigger","2017 Leading pT")
+    if setLogX is True:
+        allTriggerCanvas.SetLogx()
+    if setLogY is True:
+        allTriggerCanvas.SetLogy()
     allTriggerHist = TFile1.Get("h_PtLeadingReference_allTriggers")
     allTriggerHist_efficient = TFile1.Get("h_PtLeadingReference_allTriggers_efficientEntriesOnly")
     allTriggerHist.SetTitle(plotTitle + "(All Triggers)")
-    allTriggerHist.GetXaxis().SetTitle("pT(Lead) [GeV]")
-    allTriggerHist.GetYaxis().SetTitle("Number of Events")
+    allTriggerHist.GetXaxis().SetTitle("#it{p}_{T,Lead} [GeV]")
+    allTriggerHist.GetXaxis().SetTitleOffset(1.4)
+    allTriggerHist.GetYaxis().SetTitle("Events/1 GeV")
     allTriggerHist.SetStats(False)
     allTriggerHist.SetLineColor(ROOT.kBlack)
     allTriggerHist.SetFillColor(ROOT.kWhite)
@@ -137,49 +141,56 @@ def main():
     allTriggerHist_efficient.SetLineStyle(ROOT.kDashed)
     allTriggerHist.SetFillStyle(3144)
     allTriggerHist_efficient.SetFillStyle(3144)
+    if rebin:
+            allTriggerHist.Rebin(rebinValue)
+            allTriggerHist_efficient.Rebin(rebinValue)
+    if setLogX is True:
+        allTriggerHist.GetXaxis().SetRange(2,1000)
     allTriggerHist.Draw("hist")
     allTriggerHist_efficient.Draw("hist same")
     efficiencyPercentage = calculateEffPercent(allTriggerHist, allTriggerHist_efficient)
-    effPercentLabel = ROOT.TLatex(0.65,0.35,"Efficient Entries Percentage = "+ str(round(efficiencyPercentage, 3))+"%")
+    effPercentLabel = ROOT.TLatex(0.7, 0.78,"Efficient Entries: "+ str(round(efficiencyPercentage, 3))+"%")
     effPercentLabel.SetNDC(ROOT.kTRUE)
     effPercentLabel.SetTextSize(0.03)
     effPercentLabel.Draw()
-    legend_allTrig = ROOT.TLegend(0.825224,0.435737,0.979478,0.917304)
-    legend_allTrig.AddEntry(allTriggerHist,"All","l")
-    legend_allTrig.AddEntry(allTriggerHist_efficient,"Efficient Only","l")
+    effPercentDict["allTriggers"] = efficiencyPercentage
+    atlasText = ROOT.TLatex(0.7, 0.88, "#it{#bf{ATLAS}} Internal")
+    atlasText.SetNDC(ROOT.kTRUE)
+    atlasText.Draw()
+    atlasDetails = ROOT.TLatex(0.7, 0.83, "#sqrt{s} = 13 TeV, X.X fb^{#minus 1}")
+    atlasDetails.SetNDC(ROOT.kTRUE)
+    atlasDetails.SetTextSize(0.03)
+    atlasDetails.Draw()
+    legend_allTrig = ROOT.TLegend(0.71,0.67,0.9,0.77)
+    legend_allTrig.AddEntry(allTriggerHist,"All Entries","l")
+    legend_allTrig.AddEntry(allTriggerHist_efficient,"Efficient Entries","l")
     legend_allTrig.Draw()
     allTriggerCanvas.Update()
     allTriggerCanvas.Print(outputPDF + "_allTrigger.pdf","pdf")
-    
-    histList.sort(reverse=False, key=getMax)
-    for i,hist in enumerate(histList):
-        hist.SetFillColor(hist.GetLineColor())
-        stack.Add(hist)
-
-    stackCanvas = ROOT.TCanvas("cStack","2017 Leading pT")
-    stack.Draw("hist")
-    stack.GetXaxis().SetTitle("p_{T,Lead} [GeV]")
-    stack.GetYaxis().SetTitle("Number of Recorded Events")
-    #stack.Draw("hist")
-    legend.Draw()
-    stackCanvas.Update()
-    stackCanvas.Print(outputPDF + "_THStack.pdf","pdf")
 
     ##Match standard pT spectra to corresponding efficient pT spectra
     ##Plot each pair individually, save to one pdf
     singleTriggerCanvas = ROOT.TCanvas("cSingleTriggers","2017 Single Jet Leading pT")
     singleTriggerCanvas.Print(outputPDF + "_efficientHistComparisons.pdf[","pdf")
+    if setLogX is True:
+        singleTriggerCanvas.SetLogx()
+    if setLogY is True:
+        singleTriggerCanvas.SetLogy()
     for j,hist1 in enumerate(histList):
-        singleTriggerLegend = ROOT.TLegend(0.825224,0.435737,0.979478,0.917304)
+        singleTriggerLegend = ROOT.TLegend(0.71,0.67,0.9,0.77)
         if "Efficient" not in hist1.GetName():
             triggerName = hist1.GetName().replace('h_PtLeadingReference_','')
             for hist2 in histList:
                 #print "hist test:", hist1.GetName(), hist2.GetName()
                 if (triggerName in hist2.GetName()) and ("Efficient" in hist2.GetName()):
+                    ##NOTE:
+                    ##hist1 = all events
+                    ##hist2 = efficient only
                     print "Matching hists: ", hist1.GetName(), hist2.GetName()
                     hist1.SetTitle(plotTitle)
-                    hist1.GetXaxis().SetTitle("p_{T, Lead} " + triggerName + " [GeV]")
-                    hist1.GetYaxis().SetTitle("Number of Recorded Entries")
+                    hist1.GetXaxis().SetTitle("#it{p}_{T,Lead} " + triggerName + " [GeV]")
+                    hist1.GetXaxis().SetTitleOffset(1.4)
+                    hist1.GetYaxis().SetTitle("Events/1 GeV")
                     #hist2.SetLineStyle(2)
                     #hist1.SetLineColor(ROOT.kRed)
                     hist1.SetLineColor(ROOT.kBlack)
@@ -191,13 +202,29 @@ def main():
                     hist1.SetFillStyle(3144)
                     hist2.SetFillStyle(3144)
                     hist1.SetStats(False)
-                    hist1.Draw("hist")
-                    hist2.Draw("hist same")
+                    if rebin:
+                        hist1.Rebin(rebinValue)
+                        hist2.Rebin(rebinValue)
+                    #re-scale xaxis
+                    rescaledHist1 = rescaleXAxis(hist1, hist2, triggerName)
+                    rescaledHist2 = rescaleXAxis(hist2, hist2, triggerName)
+                    rescaledHist1.Draw("hist")
+                    rescaledHist2.Draw("hist same")
+                    ###hist1.Draw("hist")
+                    ###hist2.Draw("hist same")
                     efficiencyPercentage = calculateEffPercent(hist1, hist2)
-                    effPercentLabel = ROOT.TLatex(0.65,0.35,"Efficient Entries Percentage = "+ str(round(efficiencyPercentage, 3))+"%")
+                    effPercentLabel = ROOT.TLatex(0.70, 0.78,"Efficient Entries: "+ str(round(efficiencyPercentage, 3))+"%")
                     effPercentLabel.SetNDC(ROOT.kTRUE)
                     effPercentLabel.SetTextSize(0.03)
                     effPercentLabel.Draw()
+                    effPercentDict[triggerName] = efficiencyPercentage
+                    atlasText = ROOT.TLatex(0.70, 0.88, "#it{#bf{ATLAS}} Internal")
+                    atlasText.SetNDC(ROOT.kTRUE)
+                    atlasText.Draw()
+                    atlasDetails = ROOT.TLatex(0.70, 0.83, "#sqrt{s} = 13 TeV, X.X fb^{#minus 1}")
+                    atlasDetails.SetNDC(ROOT.kTRUE)
+                    atlasDetails.SetTextSize(0.03)
+                    atlasDetails.Draw()
                     singleTriggerLegend.AddEntry(hist1,"All Entries","l")
                     singleTriggerLegend.AddEntry(hist2,"Efficient Entries","l")
                     singleTriggerLegend.Draw()
@@ -208,91 +235,9 @@ def main():
                     singleTriggerCanvas.Print(outputPDF + "_efficientHistComparisons.pdf","pdf")
     singleTriggerCanvas.Print(outputPDF + "_efficientHistComparisons.pdf]","pdf")
 
-
-    #print legendLabels
-    #print histList
-    #print histMaximums
-        
-
-    #hPtLead_j15_2017 = TFile1.Get("h_PtLeadingReference_HLT_j15")
-    #hPtLead_j25_2017 = TFile1.Get("h_PtLeadingReference_HLT_j25")
-    #hPtLead_j35_2017 = TFile1.Get("h_PtLeadingReference_HLT_j35")
-    #hPtLead_j45_2017 = TFile1.Get("h_PtLeadingReference_HLT_j45")
-    #hPtLead_j60_2017 = TFile1.Get("h_PtLeadingReference_HLT_j60")
-    #hPtLead_j85_2017 = TFile1.Get("h_PtLeadingReference_HLT_j85")
-    #hPtLead_j110_2017 = TFile1.Get("h_PtLeadingReference_HLT_j110")
-    #hPtLead_j150_2017 = TFile1.Get("h_PtLeadingReference_HLT_j150")
-    #hPtLead_j175_2017 = TFile1.Get("h_PtLeadingReference_HLT_j175")
-    #hPtLead_j260_2017 = TFile1.Get("h_PtLeadingReference_HLT_j260")
-    #hPtLead_j320_2017 = TFile1.Get("h_PtLeadingReference_HLT_j320")
-    #hPtLead_j340_2017 = TFile1.Get("h_PtLeadingReference_HLT_j340")
-    #hPtLead_j360_2017 = TFile1.Get("h_PtLeadingReference_HLT_j360")
-    #hPtLead_j380_2017 = TFile1.Get("h_PtLeadingReference_HLT_j380")
-    #hPtLead_j400_2017 = TFile1.Get("h_PtLeadingReference_HLT_j400")
-    #hPtLead_j420_2017 = TFile1.Get("h_PtLeadingReference_HLT_j420")
-
-    #TriggerCanvas2017 = ROOT.TCanvas("c2017Triggers","2017 Leading pT")
-    #legend2017 = ROOT.TLegend(0.576493,0.739812,0.776119,0.899687)
-    #hPtLead_j15_2017.SetTitle("2017 Data")
-    #hPtLead_j15_2017.GetXaxis().SetTitle("pT(leading) [GeV]")
-    #hPtLead_j15_2017.Draw("hist")
-    #hPtLead_j420_2017.SetLineColor(1)
-    #hPtLead_j380_2017.SetLineColor(2)
-    #hPtLead_j360_2017.SetLineColor(3)
-    #hPtLead_j340_2017.SetLineColor(4)
-    #hPtLead_j320_2017.SetLineColor(5)
-    #hPtLead_j260_2017.SetLineColor(6)
-    #hPtLead_j175_2017.SetLineColor(7)
-    #hPtLead_j150_2017.SetLineColor(8)
-    #hPtLead_j110_2017.SetLineColor(9)
-    #hPtLead_j85_2017.SetLineColor(10)
-    #hPtLead_j60_2017.SetLineColor(11)
-    #hPtLead_j45_2017.SetLineColor(12)
-    #hPtLead_j35_2017.SetLineColor(13)
-    #hPtLead_j25_2017.SetLineColor(14)
-    #hPtLead_j420_2017.Draw("hist sames")
-    #hPtLead_j380_2017.Draw("hist sames")
-    #hPtLead_j360_2017.Draw("hist sames")
-    #hPtLead_j340_2017.Draw("hist sames")
-    #hPtLead_j320_2017.Draw("hist sames")
-    #hPtLead_j260_2017.Draw("hist sames")
-    #hPtLead_j175_2017.Draw("hist sames")
-    #hPtLead_j150_2017.Draw("hist sames")
-    #hPtLead_j110_2017.Draw("hist sames")
-    #hPtLead_j85_2017.Draw("hist sames")
-    #hPtLead_j60_2017.Draw("hist sames")
-    #hPtLead_j45_2017.Draw("hist sames")
-    #hPtLead_j35_2017.Draw("hist sames")
-    #hPtLead_j25_2017.Draw("hist sames")
-    #ROOT.gPad.Update()
-    #statbox_j380 = hPtLead_j380_2017.FindObject("stats")
-    #statbox_j380.SetX1NDC(0.77927)
-    #statbox_j380.SetX2NDC(0.979943)
-    #statbox_j380.SetY1NDC(0.613108)
-    #statbox_j380.SetY2NDC(0.773784)
-    #statbox_j360 = hPtLead_j360_2017.FindObject("stats")
-    #statbox_j360.SetX1NDC(0.77927)
-    #statbox_j360.SetX2NDC(0.979943)
-    #statbox_j360.SetY1NDC(0.457680)
-    #statbox_j360.SetY2NDC(0.617555)
-    #legend2017.AddEntry(hPtLead_j420_2017, "j420", "l")
-    #legend2017.AddEntry(hPtLead_j380_2017, "j380", "l")
-    #legend2017.AddEntry(hPtLead_j360_2017, "j360", "l")
-    #legend2017.AddEntry(hPtLead_j340_2017, "j340", "l")
-    #legend2017.AddEntry(hPtLead_j320_2017, "j320", "l")
-    #legend2017.AddEntry(hPtLead_j260_2017, "j260", "l")
-    #legend2017.AddEntry(hPtLead_j175_2017, "j175", "l")
-    #legend2017.AddEntry(hPtLead_j150_2017, "j150", "l")
-    #legend2017.AddEntry(hPtLead_j110_2017, "j110", "l")
-    #legend2017.AddEntry(hPtLead_j85_2017, "j85", "l")
-    #legend2017.AddEntry(hPtLead_j60_2017, "j60", "l")
-    #legend2017.AddEntry(hPtLead_j45_2017, "j45", "l")
-    #legend2017.AddEntry(hPtLead_j35_2017, "j35", "l")
-    #legend2017.AddEntry(hPtLead_j25_2017, "j25", "l")
-    #legend2017.AddEntry(hPtLead_j15_2017, "j15", "l")
-    #legend2017.Draw()
-    #TriggerCanvas2017.Update()
-    #TriggerCanvas2017.Print("TriggerImprovements_2017_allHLT.pdf","pdf")
+    pp = pprint.PrettyPrinter(indent=1)
+    with open(outputPDF + "_effPercentDict.py", "w") as filePy:
+        filePy.write(str(pp.pformat(effPercentDict)))
 
 def getMax(histogram):
     return histogram.GetMaximum()
@@ -369,8 +314,48 @@ def drawHistsWithEfficiencyPoints(hist, label, namesEffDict, canvas):
 def calculateEffPercent(stdHist, effHist):
     numEventsStd = stdHist.Integral()
     numEventsEff = effHist.Integral()
-    effFrac = numEventsEff/numEventsStd
-    effPercent = effFrac*100.0
+    if numEventsStd == 0:
+        effPercent = 0
+    else:
+        effFrac = numEventsEff/numEventsStd
+        effPercent = effFrac*100.0
     return effPercent
+
+def rescaleXAxis(hist, effHist, trigName):
+    rescaledHist = hist
+    ##syntax: 
+    ##FindFirstBinAbove(<double threshold>,<int axis [1=x,2=y,3=z]>)
+    firstFilledBin = hist.FindFirstBinAbove(0.0, 1)
+    lastFilledBin = hist.FindLastBinAbove(0.0, 1)
+
+    firstBinLowEdge = hist.GetXaxis().GetBinLowEdge(firstFilledBin)
+    lastBinHighEdge = hist.GetXaxis().GetBinUpEdge(lastFilledBin)
+    xmin = firstBinLowEdge - 1.0
+    xmax = lastBinHighEdge - 1.0
     
+    ##Play with ways to ignore single-entry bins that throw off the axis range
+    print trigName
+    #trigThreshold = float(filter(str.isdigit, trigName))
+    trigThresholdSearch = re.search('j(\d+)', trigName)
+    #print trigThresholdSearch
+    trigThreshold = int(trigThresholdSearch.group(1))
+    print trigThreshold
+
+    effPoint = effHist.GetXaxis().GetBinLowEdge(effHist.FindFirstBinAbove(0.0, 1))
+
+    #rescaledHist.GetXaxis().SetLimits((firstBinLowEdge - 2.0), (lastBinHighEdge + 2.0))
+    if (firstBinLowEdge < trigThreshold/2.0 and trigThreshold > 30 and trigThreshold != 0):
+         xmin = int(trigThreshold/2.5)
+         if (trigThreshold > 300):
+             xmin = trigThreshold/1.33
+             
+    if (lastBinHighEdge > effPoint*4 and trigThreshold != 0):
+        xmax = int(effPoint*4)
+
+    #rescaledHist.GetXaxis().SetRangeUser((firstBinLowEdge - 1.0), (lastBinHighEdge + 1.0))
+    rescaledHist.GetXaxis().SetRangeUser(xmin, xmax)
+    rescaledHist.GetXaxis().GetMoreLogLabels()
+    
+    return rescaledHist
+
 main()
